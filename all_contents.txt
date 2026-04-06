@@ -1,0 +1,749 @@
+---FILE:package.json
+{
+  "name": "audio2video-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:poc": "tsx src/cli.ts build --input sample/episode.json --out public/generated/demo",
+    "render:video": "tsx src/cli.ts render --manifest output/manifest.json --out public/generated/demo/final.mp4",
+    "studio": "remotion studio remotion/index.ts",
+    "render:remotion": "remotion render remotion/index.ts AudioStoryVideo output/final.mp4 --props=public/generated/demo/render-props.json"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@remotion/bundler": "^4.0.256",
+    "@remotion/renderer": "^4.0.256",
+    "remotion": "^4.0.256"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/react": "^18.3.20",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
+
+---FILE:tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["src", "remotion"]
+}
+
+---FILE:.env.example
+ELEVENLABS_API_KEY=
+ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+ELEVENLABS_OUTPUT_FORMAT=mp3_44100_128
+VOICE_ID_FATHER=
+VOICE_ID_MOTHER=
+VOICE_ID_SON=
+VOICE_ID_DAUGHTER=
+VOICE_ID_AUNTY=
+VOICE_ID_UNCLE=
+VOICE_ID_GRANDFATHER=
+VOICE_ID_GRANDMOTHER=
+
+---FILE:README.md
+# Audio to Video POC
+
+A minimal proof of concept for the pipeline you described:
+
+1. read a structured script with speaker labels
+2. synthesize each segment separately using ElevenLabs (or a mock fallback)
+3. record segment timings
+4. auto-group segments into scenes
+5. generate one placeholder image per scene
+6. render images + subtle motion + subtitles into MP4 using Remotion
+
+## What this POC includes
+
+- **Structured script input** in JSON
+- **Segment-level TTS** using ElevenLabs `with-timestamps` when configured, matching the official `POST /v1/text-to-speech/:voice_id/with-timestamps` flow and falling back to mock audio when no API key / voice IDs are set. citeturn300849search1turn300849search4
+- **Scene auto-grouping** based on topic + location + max scene length
+- **Prompt-ready scene manifest** for consistent illustration generation
+- **Placeholder illustration generation** as SVGs for local testing
+- **Video rendering** with Remotion, which is designed for parameterized programmatic video creation. citeturn128616search0turn128616search2
+
+## Project structure
+
+```text
+sample/episode.json           Example script input
+src/cli.ts                    Build + render commands
+src/providers/elevenlabs.ts   ElevenLabs / mock TTS provider
+src/lib/scenes.ts             Auto-group timing segments into scenes
+src/lib/placeholder-image.ts  Placeholder scene image generator
+src/lib/subtitles.ts          SRT builder
+remotion/index.ts             Remotion composition entry
+remotion/Video.tsx            Video template
+public/generated/demo/         Generated assets used by Remotion
+output/                        Final exported MP4
+```
+
+## Setup
+
+```bash
+npm install
+cp .env.example .env
+```
+
+Fill `.env` only if you want real ElevenLabs audio:
+
+```bash
+ELEVENLABS_API_KEY=...
+VOICE_ID_FATHER=...
+VOICE_ID_MOTHER=...
+VOICE_ID_SON=...
+VOICE_ID_DAUGHTER=...
+```
+
+You can keep the other voice IDs blank for now.
+
+## Build the POC assets
+
+```bash
+npm run build:poc
+```
+
+This writes:
+
+- `public/generated/demo/manifest.json`
+- `public/generated/demo/subtitles.srt`
+- `public/generated/demo/audio/*`
+- `public/generated/demo/images/*`
+- `public/generated/demo/render-props.json`
+
+## Render MP4
+
+```bash
+npm run render:video
+```
+
+This bundles the Remotion project and renders `output/final.mp4`.
+
+## Current limitations
+
+This is intentionally MVP-level.
+
+- Scene images are placeholders, not final generated illustrations
+- Character consistency is not yet enforced with a style bible / reference system
+- There is no dialogue-mode generation yet; audio is segment-by-segment TTS
+- Subtitle splitting is per segment, not per phrase
+- Scene grouping uses simple heuristics
+
+## Recommended next upgrades
+
+1. Replace placeholder SVG generation with your actual image provider
+2. Add a `character_style_registry.json`
+3. Add `scene_planner.ts` that converts script to richer visual beats
+4. Switch from segment-level subtitles to phrase-level captions
+5. Add clip rendering for YouTube Shorts
+
+---FILE:sample/episode.json
+{
+  "episodeId": "gita-ep-001",
+  "title": "Why Arjuna Felt Confused",
+  "language": "en",
+  "fps": 30,
+  "segments": [
+    {
+      "speaker": "son",
+      "text": "Dad, if Arjuna was such a great warrior, why did he suddenly become confused on the battlefield?",
+      "emotion": "curious",
+      "location": "warm Indian family living room",
+      "topic": "question"
+    },
+    {
+      "speaker": "father",
+      "text": "Because in that moment, he was not seeing enemies. He was seeing his own people, his teachers, and his relatives.",
+      "emotion": "calm",
+      "location": "warm Indian family living room",
+      "topic": "explanation"
+    },
+    {
+      "speaker": "daughter",
+      "text": "So it was not weakness exactly. It was more like his emotions became too heavy?",
+      "emotion": "thoughtful",
+      "location": "warm Indian family living room",
+      "topic": "reflection"
+    },
+    {
+      "speaker": "mother",
+      "text": "Yes. Sometimes good people feel confused when duty and emotion pull them in two different directions.",
+      "emotion": "gentle",
+      "location": "warm Indian family living room",
+      "topic": "explanation"
+    },
+    {
+      "speaker": "father",
+      "text": "Imagine a symbolic view of Kurukshetra behind him. The outer battle was real, but the inner battle inside his mind was even stronger.",
+      "emotion": "reflective",
+      "location": "symbolic Kurukshetra battlefield",
+      "topic": "story_insert"
+    },
+    {
+      "speaker": "son",
+      "text": "Oh. So Krishna first helped him clear his mind before asking him to act?",
+      "emotion": "realization",
+      "location": "warm Indian family living room",
+      "topic": "realization"
+    },
+    {
+      "speaker": "father",
+      "text": "Exactly. Clarity first. Action next.",
+      "emotion": "assured",
+      "location": "warm Indian family living room",
+      "topic": "takeaway"
+    }
+  ]
+}
+
+---FILE:src/cli.ts
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {bundle} from '@remotion/bundler';
+import {renderMedia, selectComposition} from '@remotion/renderer';
+import {readJson, writeJson, ensureDir} from './lib/fs.js';
+import {synthesizeSegment} from './providers/elevenlabs.js';
+import {groupIntoScenes} from './lib/scenes.js';
+import {writePlaceholderSceneImage} from './lib/placeholder-image.js';
+import {buildSrt} from './lib/subtitles.js';
+import type {EpisodeScript, SegmentTiming, VideoManifest} from './types.js';
+
+const argValue = (flag: string) => {
+  const index = process.argv.indexOf(flag);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+};
+
+const build = async () => {
+  const inputPath = argValue('--input');
+  const outDir = argValue('--out') ?? 'public/generated/demo';
+  if (!inputPath) throw new Error('Missing --input');
+
+  const episode = await readJson<EpisodeScript>(inputPath);
+  const fps = episode.fps ?? 30;
+  const audioDir = path.join(outDir, 'audio');
+  const imageDir = path.join(outDir, 'images');
+  await ensureDir(audioDir);
+  await ensureDir(imageDir);
+
+  const timings: SegmentTiming[] = [];
+  let cursor = 0;
+
+  for (const [index, segment] of episode.segments.entries()) {
+    const {audioPath, durationSec} = await synthesizeSegment(episode, segment, index, audioDir);
+    const publicAudioPath = path.relative(path.resolve('public'), path.resolve(audioPath)).replace(/\\/g, '/');
+    timings.push({
+      segmentIndex: index,
+      speaker: segment.speaker,
+      text: segment.text,
+      audioPath: publicAudioPath,
+      startSec: cursor,
+      endSec: cursor + durationSec,
+      durationSec,
+      subtitle: segment.text,
+      location: segment.location,
+      emotion: segment.emotion,
+      topic: segment.topic,
+    });
+    cursor += durationSec;
+  }
+
+  const scenes = await groupIntoScenes(timings, imageDir);
+  for (const scene of scenes) {
+    await writePlaceholderSceneImage(scene);
+    scene.imagePath = path.relative(path.resolve('public'), path.resolve(scene.imagePath)).replace(/\\/g, '/');
+  }
+
+  const manifest: VideoManifest = {
+    episodeId: episode.episodeId,
+    title: episode.title,
+    fps,
+    totalDurationSec: cursor,
+    width: 1280,
+    height: 720,
+    segmentTimings: timings,
+    scenes,
+  };
+
+  await writeJson(path.join(outDir, 'manifest.json'), manifest);
+  await fs.writeFile(path.join(outDir, 'subtitles.srt'), buildSrt(timings), 'utf8');
+  await writeJson(path.join(outDir, 'render-props.json'), {manifestPath: path.resolve(outDir, 'manifest.json')});
+
+  console.log(`Built manifest at ${path.join(outDir, 'manifest.json')}`);
+};
+
+const render = async () => {
+  const manifestPath = argValue('--manifest');
+  const outPath = argValue('--out') ?? 'output/final.mp4';
+  if (!manifestPath) throw new Error('Missing --manifest');
+
+  const entry = path.resolve('remotion/index.ts');
+  const serveUrl = await bundle({entryPoint: entry});
+  const inputProps = {manifestPath: path.resolve(manifestPath)};
+  const composition = await selectComposition({serveUrl, id: 'AudioStoryVideo', inputProps});
+
+  await renderMedia({
+    composition,
+    serveUrl,
+    codec: 'h264',
+    outputLocation: path.resolve(outPath),
+    inputProps,
+  });
+
+  console.log(`Rendered video to ${outPath}`);
+};
+
+const command = process.argv[2];
+
+if (command === 'build') {
+  await build();
+} else if (command === 'render') {
+  await render();
+} else {
+  console.log('Usage: tsx src/cli.ts <build|render> [options]');
+}
+
+---FILE:src/types.ts
+export type Speaker =
+  | 'father'
+  | 'mother'
+  | 'son'
+  | 'daughter'
+  | 'aunty'
+  | 'uncle'
+  | 'grandfather'
+  | 'grandmother';
+
+export interface ScriptSegment {
+  speaker: Speaker;
+  text: string;
+  emotion?: string;
+  location?: string;
+  topic?: string;
+}
+
+export interface EpisodeScript {
+  episodeId: string;
+  title: string;
+  language: string;
+  fps?: number;
+  segments: ScriptSegment[];
+}
+
+export interface SegmentTiming {
+  segmentIndex: number;
+  speaker: Speaker;
+  text: string;
+  audioPath: string;
+  startSec: number;
+  endSec: number;
+  durationSec: number;
+  subtitle: string;
+  location?: string;
+  emotion?: string;
+  topic?: string;
+}
+
+export interface Scene {
+  sceneId: string;
+  startSec: number;
+  endSec: number;
+  durationSec: number;
+  imagePath: string;
+  imagePrompt: string;
+  location: string;
+  topic: string;
+  speakers: Speaker[];
+  caption?: string;
+}
+
+export interface VideoManifest {
+  episodeId: string;
+  title: string;
+  fps: number;
+  totalDurationSec: number;
+  width: number;
+  height: number;
+  segmentTimings: SegmentTiming[];
+  scenes: Scene[];
+}
+
+---FILE:src/lib/fs.ts
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+export const ensureDir = async (dir: string) => {
+  await fs.mkdir(dir, {recursive: true});
+};
+
+export const writeJson = async (filePath: string, value: unknown) => {
+  await ensureDir(path.dirname(filePath));
+  await fs.writeFile(filePath, JSON.stringify(value, null, 2), 'utf8');
+};
+
+export const readJson = async <T>(filePath: string): Promise<T> => {
+  const raw = await fs.readFile(filePath, 'utf8');
+  return JSON.parse(raw) as T;
+};
+
+---FILE:src/lib/mock-audio.ts
+import fs from 'node:fs/promises';
+
+const sampleRate = 24000;
+
+const speakerFrequency = (speaker: string) => {
+  switch (speaker) {
+    case 'father': return 210;
+    case 'mother': return 260;
+    case 'son': return 320;
+    case 'daughter': return 350;
+    case 'aunty': return 250;
+    case 'uncle': return 220;
+    case 'grandfather': return 180;
+    case 'grandmother': return 230;
+    default: return 240;
+  }
+};
+
+const clamp16 = (value: number) => Math.max(-32768, Math.min(32767, value));
+
+export const estimateSpeechDurationSec = (text: string) => {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1.5, words / 2.6);
+};
+
+export const writeMockSpeechWav = async (outputPath: string, speaker: string, text: string) => {
+  const durationSec = estimateSpeechDurationSec(text);
+  const totalSamples = Math.floor(durationSec * sampleRate);
+  const dataSize = totalSamples * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  const frequency = speakerFrequency(speaker);
+
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  for (let i = 0; i < totalSamples; i += 1) {
+    const t = i / sampleRate;
+    const envelope = Math.min(1, i / 1200) * Math.min(1, (totalSamples - i) / 1200);
+    const tone = Math.sin(2 * Math.PI * frequency * t);
+    const wobble = Math.sin(2 * Math.PI * 4 * t) * 0.15;
+    const sample = clamp16((tone * 0.18 + wobble) * envelope * 32767);
+    buffer.writeInt16LE(sample, 44 + i * 2);
+  }
+
+  await fs.writeFile(outputPath, buffer);
+  return durationSec;
+};
+
+---FILE:src/lib/placeholder-image.ts
+import fs from 'node:fs/promises';
+import type {Scene} from '../types.js';
+
+const wrap = (text: string, width = 52) => {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 8);
+};
+
+export const writePlaceholderSceneImage = async (scene: Scene) => {
+  const lines = wrap(scene.imagePrompt);
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#2d1b69" />
+        <stop offset="100%" stop-color="#11998e" />
+      </linearGradient>
+    </defs>
+    <rect width="1280" height="720" fill="url(#bg)" />
+    <rect x="70" y="70" width="1140" height="580" rx="28" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.28)" />
+    <text x="110" y="150" fill="#ffffff" font-size="38" font-family="Arial, Helvetica, sans-serif" font-weight="700">${scene.sceneId}</text>
+    <text x="110" y="205" fill="#d9f1ff" font-size="28" font-family="Arial, Helvetica, sans-serif">${scene.location}</text>
+    ${lines.map((line, index) => `<text x="110" y="${280 + index * 42}" fill="#ffffff" font-size="26" font-family="Arial, Helvetica, sans-serif">${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`).join('')}
+    <text x="110" y="620" fill="#d9f1ff" font-size="22" font-family="Arial, Helvetica, sans-serif">Speakers: ${scene.speakers.join(', ')}</text>
+  </svg>`;
+  await fs.writeFile(scene.imagePath, svg.trim(), 'utf8');
+};
+
+---FILE:src/lib/scenes.ts
+import path from 'node:path';
+import {ensureDir} from './fs.js';
+import type {Scene, SegmentTiming} from '../types.js';
+
+const scenePrompt = (timings: SegmentTiming[]) => {
+  const first = timings[0];
+  const speakers = [...new Set(timings.map((t) => t.speaker))].join(', ');
+  const textHint = timings.map((t) => t.text).join(' ');
+  return [
+    'Warm Indian educational storybook illustration, soft cinematic lighting, consistent family-friendly visual style.',
+    `Location: ${first.location ?? 'Indian family home interior'}.`,
+    `Visible speakers: ${speakers}.`,
+    `Mood: ${first.emotion ?? 'calm'}.`,
+    `Topic: ${first.topic ?? 'family conversation'}.`,
+    `Action hint: ${textHint}`,
+    'No text in image. Clean composition. Suitable for YouTube educational storytelling.',
+  ].join(' ');
+};
+
+export const groupIntoScenes = async (timings: SegmentTiming[], imageDir: string): Promise<Scene[]> => {
+  await ensureDir(imageDir);
+  const scenes: Scene[] = [];
+  let bucket: SegmentTiming[] = [];
+
+  const flush = async () => {
+    if (bucket.length === 0) return;
+    const first = bucket[0];
+    const last = bucket[bucket.length - 1];
+    const sceneId = `scene-${String(scenes.length + 1).padStart(3, '0')}`;
+    const imagePath = path.join(imageDir, `${sceneId}.svg`);
+    const imagePrompt = scenePrompt(bucket);
+    const scene: Scene = {
+      sceneId,
+      startSec: first.startSec,
+      endSec: last.endSec,
+      durationSec: last.endSec - first.startSec,
+      imagePath,
+      imagePrompt,
+      location: first.location ?? 'Indian family home interior',
+      topic: first.topic ?? 'family conversation',
+      speakers: [...new Set(bucket.map((b) => b.speaker))],
+      caption: first.text,
+    };
+    scenes.push(scene);
+    bucket = [];
+  };
+
+  for (const timing of timings) {
+    const prev = bucket.at(-1);
+    if (!prev) {
+      bucket.push(timing);
+      continue;
+    }
+
+    const duration = timing.endSec - bucket[0].startSec;
+    const sameLocation = prev.location === timing.location;
+    const sameTopic = prev.topic === timing.topic;
+
+    if (sameLocation && sameTopic && duration <= 12) {
+      bucket.push(timing);
+      continue;
+    }
+
+    await flush();
+    bucket.push(timing);
+  }
+
+  await flush();
+  return scenes;
+};
+
+---FILE:src/lib/subtitles.ts
+import type {SegmentTiming} from '../types.js';
+
+const formatTime = (totalSeconds: number) => {
+  const ms = Math.floor((totalSeconds % 1) * 1000);
+  const totalWhole = Math.floor(totalSeconds);
+  const hours = Math.floor(totalWhole / 3600);
+  const minutes = Math.floor((totalWhole % 3600) / 60);
+  const seconds = totalWhole % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+};
+
+export const buildSrt = (timings: SegmentTiming[]) =>
+  timings
+    .map((timing, index) => `${index + 1}\n${formatTime(timing.startSec)} --> ${formatTime(timing.endSec)}\n${timing.speaker.toUpperCase()}: ${timing.subtitle}`)
+    .join('\n\n');
+
+---FILE:src/providers/elevenlabs.ts
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {writeMockSpeechWav, estimateSpeechDurationSec} from '../lib/mock-audio.js';
+import type {EpisodeScript, ScriptSegment, Speaker} from '../types.js';
+
+interface TimestampAlignment {
+  character_start_times_seconds: number[];
+  character_end_times_seconds: number[];
+}
+
+const voiceIdForSpeaker = (speaker: Speaker) => process.env[`VOICE_ID_${speaker.toUpperCase()}`];
+
+export const synthesizeSegment = async (
+  episode: EpisodeScript,
+  segment: ScriptSegment,
+  segmentIndex: number,
+  outDir: string,
+): Promise<{audioPath: string; durationSec: number}> => {
+  const audioPath = path.join(outDir, `segment-${String(segmentIndex).padStart(3, '0')}.wav`);
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = voiceIdForSpeaker(segment.speaker);
+
+  if (!apiKey || !voiceId) {
+    const durationSec = await writeMockSpeechWav(audioPath, segment.speaker, segment.text);
+    return {audioPath, durationSec};
+  }
+
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'xi-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      text: segment.text,
+      model_id: process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2',
+      language_code: episode.language,
+      output_format: process.env.ELEVENLABS_OUTPUT_FORMAT ?? 'mp3_44100_128',
+    }),
+  });
+
+  if (!response.ok) {
+    const fallback = await writeMockSpeechWav(audioPath, segment.speaker, segment.text);
+    return {audioPath, durationSec: fallback};
+  }
+
+  const json = (await response.json()) as {
+    audio_base64: string;
+    normalized_alignment?: TimestampAlignment;
+    alignment?: TimestampAlignment;
+  };
+
+  const binary = Buffer.from(json.audio_base64, 'base64');
+  await fs.writeFile(audioPath.replace(/\.wav$/, '.mp3'), binary);
+
+  const alignment = json.normalized_alignment ?? json.alignment;
+  const durationSec = alignment?.character_end_times_seconds.at(-1) ?? estimateSpeechDurationSec(segment.text);
+
+  return {audioPath: audioPath.replace(/\.wav$/, '.mp3'), durationSec};
+};
+
+---FILE:remotion/index.ts
+import React from 'react';
+import {Composition, registerRoot} from 'remotion';
+import {AudioStoryVideo} from './Video.js';
+import {loadManifest} from './load-manifest.js';
+
+const Root: React.FC<{manifestPath: string}> = ({manifestPath}) => {
+  const manifest = loadManifest(manifestPath);
+  const durationInFrames = Math.ceil(manifest.totalDurationSec * manifest.fps);
+
+  return (
+    <Composition
+      id="AudioStoryVideo"
+      component={AudioStoryVideo}
+      durationInFrames={durationInFrames}
+      fps={manifest.fps}
+      width={manifest.width}
+      height={manifest.height}
+      defaultProps={{manifest}}
+    />
+  );
+};
+
+registerRoot(Root);
+
+---FILE:remotion/load-manifest.ts
+import fs from 'node:fs';
+import type {VideoManifest} from '../src/types.js';
+
+export const loadManifest = (manifestPath: string): VideoManifest => {
+  const raw = fs.readFileSync(manifestPath, 'utf8');
+  return JSON.parse(raw) as VideoManifest;
+};
+
+---FILE:remotion/Video.tsx
+import React from 'react';
+import {AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import type {VideoManifest} from '../src/types.js';
+
+const SubtitleLayer: React.FC<{manifest: VideoManifest}> = ({manifest}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const second = frame / fps;
+  const current = manifest.segmentTimings.find((segment) => second >= segment.startSec && second < segment.endSec);
+
+  if (!current) return null;
+
+  return (
+    <div style={{position: 'absolute', left: 80, right: 80, bottom: 56, display: 'flex', justifyContent: 'center'}}>
+      <div style={{backgroundColor: 'rgba(0,0,0,0.72)', color: 'white', borderRadius: 16, padding: '18px 24px', fontSize: 30, lineHeight: 1.35, fontFamily: 'Arial, Helvetica, sans-serif', textAlign: 'center'}}>
+        <div style={{fontSize: 18, opacity: 0.75, marginBottom: 6}}>{current.speaker.toUpperCase()}</div>
+        <div>{current.subtitle}</div>
+      </div>
+    </div>
+  );
+};
+
+const SceneVisual: React.FC<{src: string; from: number; durationInFrames: number}> = ({src, from, durationInFrames}) => {
+  const frame = useCurrentFrame();
+  const local = frame - from;
+  const entrance = spring({frame: local, fps: 30, config: {damping: 200}});
+  const scale = interpolate(local, [0, durationInFrames], [1, 1.06], {extrapolateRight: 'clamp'});
+
+  return (
+    <Sequence from={from} durationInFrames={durationInFrames}>
+      <AbsoluteFill style={{opacity: entrance}}>
+        <Img src={src} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${scale})`}} />
+        <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.38))'}} />
+      </AbsoluteFill>
+    </Sequence>
+  );
+};
+
+export const AudioStoryVideo: React.FC<{manifest: VideoManifest}> = ({manifest}) => {
+  const {fps} = useVideoConfig();
+
+  return (
+    <AbsoluteFill style={{backgroundColor: '#000'}}>
+      {manifest.scenes.map((scene) => (
+        <SceneVisual
+          key={scene.sceneId}
+          src={staticFile(scene.imagePath)}
+          from={Math.floor(scene.startSec * fps)}
+          durationInFrames={Math.max(1, Math.ceil(scene.durationSec * fps))}
+        />
+      ))}
+
+      {manifest.segmentTimings.map((segment) => (
+        <Sequence key={segment.segmentIndex} from={Math.floor(segment.startSec * fps)} durationInFrames={Math.max(1, Math.ceil(segment.durationSec * fps))}>
+          <Audio src={staticFile(segment.audioPath)} />
+        </Sequence>
+      ))}
+
+      <SubtitleLayer manifest={manifest} />
+    </AbsoluteFill>
+  );
+};
+

@@ -1,0 +1,57 @@
+{
+  "episodeId": "gita-ep-001",
+  "title": "Why Arjuna Felt Confused",
+  "language": "en",
+  "fps": 30,
+  "segments": [
+    {
+      "speaker": "son",
+      "text": "Dad, if Arjuna was such a great warrior, why did he suddenly become confused on the battlefield?",
+      "emotion": "curious",
+      "location": "warm Indian family living room",
+      "topic": "question"
+    },
+    {
+      "speaker": "father",
+      "text": "Because in that moment, he was not seeing enemies. He was seeing his own people, his teachers, and his relatives.",
+      "emotion": "calm",
+      "location": "warm Indian family living room",
+      "topic": "explanation"
+    },
+    {
+      "speaker": "daughter",
+      "text": "So it was not weakness exactly. It was more like his emotions became too heavy?",
+      "emotion": "thoughtful",
+      "location": "warm Indian family living room",
+      "topic": "reflection"
+    },
+    {
+      "speaker": "mother",
+      "text": "Yes. Sometimes good people feel confused when duty and emotion pull them in two different directions.",
+      "emotion": "gentle",
+      "location": "warm Indian family living room",
+      "topic": "explanation"
+    },
+    {
+      "speaker": "father",
+      "text": "Imagine a symbolic view of Kurukshetra behind him. The outer battle was real, but the inner battle inside his mind was even stronger.",
+      "emotion": "reflective",
+      "location": "symbolic Kurukshetra battlefield",
+      "topic": "story_insert"
+    },
+    {
+      "speaker": "son",
+      "text": "Oh. So Krishna first helped him clear his mind before asking him to act?",
+      "emotion": "realization",
+      "location": "warm Indian family living room",
+      "topic": "realization"
+    },
+    {
+      "speaker": "father",
+      "text": "Exactly. Clarity first. Action next.",
+      "emotion": "assured",
+      "location": "warm Indian family living room",
+      "topic": "takeaway"
+    }
+  ]
+}
