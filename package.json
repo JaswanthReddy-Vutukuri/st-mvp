@@ -1,0 +1,25 @@
+{
+  "name": "st-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:poc": "tsx src/cli.ts build --input sample/episode.json --out public/generated/demo",
+    "render:video": "tsx src/cli.ts render --manifest public/generated/demo/manifest.json --out output/final.mp4",
+    "studio": "remotion studio remotion/index.ts",
+    "render:remotion": "remotion render remotion/index.ts AudioStoryVideo output/final.mp4 --props=public/generated/demo/render-props.json"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@remotion/bundler": "^4.0.256",
+    "@remotion/renderer": "^4.0.256",
+    "remotion": "^4.0.256"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/react": "^18.3.20",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
